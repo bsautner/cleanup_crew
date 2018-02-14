@@ -26,6 +26,9 @@ repositories {
 }
 
 dependencies {
+  // https://mvnrepository.com/artifact/io.reactivex.rxjava2/rxjava
+  compile group: 'io.reactivex.rxjava2', name: 'rxjava', version: '2.1.9'
+
   compile 'com.pi4j:pi4j-core:1.2-SNAPSHOT'
 }
 

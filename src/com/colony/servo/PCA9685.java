@@ -108,6 +108,7 @@ public class PCA9685 {
 		if (on > off) {
 			throw new IllegalArgumentException("Off must be greater than On");
 		}
+
 		try {
 			servoDriver.write(LED0_ON_L + 4 * channel, (byte) (on & 0xFF));
 			servoDriver.write(LED0_ON_H + 4 * channel, (byte) (on >> 8));

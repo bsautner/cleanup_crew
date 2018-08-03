@@ -28,6 +28,8 @@ repositories {
 dependencies {
   // https://mvnrepository.com/artifact/io.reactivex.rxjava2/rxjava
   compile group: 'io.reactivex.rxjava2', name: 'rxjava', version: '2.1.9'
+// https://mvnrepository.com/artifact/com.diozero/diozero-provider-wiringpi
+  compile group: 'com.diozero', name: 'diozero-provider-wiringpi', version: '0.11'
 
   compile 'com.pi4j:pi4j-core:1.2-SNAPSHOT'
 }

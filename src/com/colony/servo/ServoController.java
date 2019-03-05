@@ -13,12 +13,6 @@ import static com.colony.utils.TimeUtil.delay;
 public class ServoController {
 
     private PCA9685 servoBoard;
-    private final static int LEFT_SHOULDER_X = 0;
-    private final static int LEFT_SHOULDER_Y = 1;
-    private final static int RIGHT_SHOULDER_X = 12;
-    private final static int RIGHT_SHOULDER_Y = 13;
-
-    private Map<Integer, Servo> servos = new HashMap<>();
 
     public ServoController()   {
 
@@ -36,8 +30,8 @@ public class ServoController {
 
     public Completable angle(int servo, int angle) {
 
-        int servoMin = 150;   // -90 deg
-        int servoMax = 630;   // +90 deg
+        int servoMin = 145;   // -90 deg
+        int servoMax = 650;   // +90 deg
 
 
 
@@ -50,7 +44,7 @@ public class ServoController {
                 // int off = (int) (servoMin + (((double) (angle + 90) / 180d) * (servoMax - servoMin)));
                 int off = (int) (servoMin + (((double) (angle + 90) / 180d) * (servoMax - servoMin)));
 
-                System.out.println("setPWM(" + servo + ", " + on + ", " + off + ");");
+               // System.out.println("setPWM(" + servo + ", " + on + ", " + off + ");");
                 servoBoard.setPWM(servo, on, off);
                 System.out.println("-------------------");
                 delay(2000);

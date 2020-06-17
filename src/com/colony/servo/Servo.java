@@ -9,7 +9,7 @@ public class Servo {
     private boolean isAvailable;
 
     public int getCurrentPosition() {
-        return currentPosition;
+         return currentPosition;
     }
 
     public void setCurrentPosition(int currentPosition) {

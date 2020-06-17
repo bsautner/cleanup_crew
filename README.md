@@ -5,10 +5,13 @@ Just a fun project to create Raspberry pi / pi4J based robots leveraging cloud a
 ## Setup
 
 * Run on pi: `sudo raspi-config` to set it up
-   * Enable PCM
+   * Enable PCM (advanced options)
    * Enable Camera
 * Install Java 8: `sudo apt-get install oracle-java8-jdk`
+* sudo apt-get install wiringpi
+
 
 
 ## Hardware
 
+Connect Servos brown to black

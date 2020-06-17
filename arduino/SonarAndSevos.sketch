@@ -1,61 +1,246 @@
+// Example code for recording and playing back servo motion with a
+// analog feedback servo
+// http://www.adafruit.com/products/1404
+
+
 #include <Servo.h>
+#include <EEPROM.h>
+#include <ArduinoJson.h>
 
+#define SAMPLE_DELAY 25 // in ms, 50ms seems good
 
-int feedbackPinA0 = A0;
-int feedbackPinB0 = A1;
+uint8_t recordButtonPin = 12;
+uint8_t playButtonPin = 7;
+uint8_t S1_FEEDBACK_PIN = A0;
+uint8_t ledPin = 13;
+int minDegrees = 0;
+int maxDegrees =180;
+int minFeedback;
+int maxFeedback;
+uint8_t S1_DATA_PIN = 52;
 
-int posA0;
-int posB0;
+int tolerance = 2; // max feedback measurement error
+Servo S1;
 
+//sonar
 int trigPin = 11;    // Trigger
 int echoPin = 12;    // Echo
 long duration, cm, inches;
+unsigned long lastSonarPing;
+
+
+
+
+String inputString = "";
+bool stringComplete = false;
+DynamicJsonDocument doc(1024);
+StaticJsonDocument<200> sonarData;
+StaticJsonDocument<200> servoData;
 
 void setup() {
-  //Serial Port begin
-  Serial.begin (9600);
-  //Define inputs and outputs
+  Serial.begin(9600);
+  inputString.reserve(200);
+  pinMode(LED_BUILTIN, OUTPUT);
+  calibrate(S1, S1_FEEDBACK_PIN, minDegrees, maxDegrees);
+
+    //Define inputs and outputs sonar
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
+  lastSonarPing = millis();
 }
 
 void loop() {
-  // The sensor is triggered by a HIGH pulse of 10 or more microseconds.
-  // Give a short LOW pulse beforehand to ensure a clean HIGH pulse:
-  digitalWrite(trigPin, LOW);
-  delayMicroseconds(5);
-  digitalWrite(trigPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigPin, LOW);
-
-  // Read the signal from the sensor: a HIGH pulse whose
-  // duration is the time (in microseconds) from the sending
-  // of the ping to the reception of its echo off of an object.
-  pinMode(echoPin, INPUT);
-  duration = pulseIn(echoPin, HIGH);
-
-  // Convert the time into a distance
-  cm = (duration/2) / 29.1;     // Divide by 29.1 or multiply by 0.0343
-  inches = (duration/2) / 74;   // Divide by 74 or multiply by 0.0135
-  posA0 = analogRead(feedbackPinA0);
-  posB0 = analogRead(feedbackPinB0);
-
-  Serial.print("[sonarA0:");
-  Serial.print(cm);
-  Serial.print("cm]");
-  Serial.println();
 
 
-  Serial.print("[servoA0:");
-  Serial.print(posA0);
-  Serial.print("]");
-  Serial.println();
+  if (millis() - lastSonarPing > 1000) {
+    digitalWrite(trigPin, LOW);
+    delayMicroseconds(5);
+    digitalWrite(trigPin, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trigPin, LOW);
+    pinMode(echoPin, INPUT);
+    duration = pulseIn(echoPin, HIGH);
+    // Convert the time into a distance
+    cm = (duration/2) / 29.1;     // Divide by 29.1 or multiply by 0.0343
+    sonarData["id"] = 4;
+    sonarData["name"] = "sonar1";
+    sonarData["value"] = cm;
+
+    serializeJson(sonarData, Serial);
+    Serial.print("\n");
+    lastSonarPing = millis();
+  //  Serial.println(getPos(S1_FEEDBACK_PIN));
+
+  }
 
 
-  Serial.print("[servoB0:");
-  Serial.print(posB0);
-  Serial.print("]");
-  Serial.println();
+  if (stringComplete) {
 
+
+    deserializeJson(doc, inputString);
+
+    inputString = "";
+    stringComplete = false;
+    int commandId = doc["id"];
+
+
+    switch (commandId) {
+
+      case 1:{ //ping
+          Serial.println("DEBUG::pong");
+          servoData["id"] = 1;
+          servoData["S1_POS"] = getPos(S1_FEEDBACK_PIN);
+          serializeJson(servoData, Serial);
+          Serial.print("\n");
+          break;
+      }
+      case 2: {//seek
+           int pos = doc["value"];
+          fseek(S1, S1_FEEDBACK_PIN, pos);
+
+          break;
+      }
+       case 3: {
+           calibrate(S1, S1_FEEDBACK_PIN, minDegrees, maxDegrees);
+
+          break;
+       }
+      case 4: {
+          break;
+      }
+       default:
+          break;
+
+    }
+
+
+  }
+
+
+
+
+
+}
+
+int getPos(int analogPin)
+{
+  return map(analogRead(analogPin), minFeedback, maxFeedback, minDegrees, maxDegrees);
+}
+
+
+void playServo(uint8_t S1_DATA_PIN, uint8_t buttonPin) {
+  uint16_t addr = 0;
+  Serial.println("Playing");
+
+
+  S1.attach(S1_DATA_PIN);
+  while (digitalRead(buttonPin)) {
+    uint8_t x = EEPROM.read(addr);
+    Serial.print("Read EE: "); Serial.print(x);
+    if (x == 255) break;
+    // map to 0-180 degrees
+    x = map(x, 0, 254, 0, 180);
+    Serial.print(" -> "); Serial.println(x);
+    S1.write(x);
+    delay(SAMPLE_DELAY);
+    addr++;
+    if (addr == 512) break;
+  }
+  Serial.println("Done");
+  S1.detach();
   delay(250);
+}
+
+void recordServo(uint8_t S1_DATA_PIN, uint8_t analogPin, uint8_t buttonPin) {
+  uint16_t addr = 0;
+
+  Serial.println("Recording");
+  digitalWrite(ledPin, HIGH);
+
+
+
+
+  pinMode(analogPin, INPUT);
+  while (digitalRead(buttonPin)) {
+     uint16_t a = analogRead(analogPin);
+
+     Serial.print("Read analog: "); Serial.print(a);
+     if (a < minFeedback) a = minFeedback;
+     if (a > maxFeedback) a = maxFeedback;
+     a = map(a, minFeedback, maxFeedback, 0, 254);
+     Serial.print(" -> "); Serial.println(a);
+     EEPROM.write(addr, a);
+     addr++;
+     if (addr == 512) break;
+     delay(SAMPLE_DELAY);
+  }
+  if (addr != 512) EEPROM.write(addr, 255);
+
+  digitalWrite(ledPin, LOW);
+
+  Serial.println("Done");
+  delay(250);
+}
+
+
+/*
+  This function establishes the feedback values for 2 positions of the servo.
+  With this information, we can interpolate feedback values for intermediate positions
+*/
+void calibrate(Servo servo, int analogPin, int minPos, int maxPos)
+{
+  servo.attach(S1_DATA_PIN);
+  // Move to the minimum position and record the feedback value
+  servo.write(minPos);
+  minDegrees = minPos;
+  delay(2000); // make sure it has time to get there and settle
+  minFeedback = analogRead(analogPin);
+
+  // Move to the maximum position and record the feedback value
+  servo.write(maxPos);
+  maxDegrees = maxPos;
+  delay(2000); // make sure it has time to get there and settle
+  maxFeedback = analogRead(analogPin);
+  servo.detach();
+
+}
+
+
+
+void fseek(Servo servo, int analogPin, int pos)
+{
+  unsigned long t = millis();
+   servo.attach(S1_DATA_PIN);
+  // Start the move...
+  servo.write(pos);
+
+  // Calculate the target feedback value for the final position
+  int target = map(pos, minDegrees, maxDegrees, minFeedback, maxFeedback);
+
+  // Wait until it reaches the target
+
+  while(abs(analogRead(analogPin) - target) > tolerance){
+
+    if (millis() - t > 2000) {
+      Serial.println("stuck");
+      break;
+    }
+
+    } // wait...
+  servo.detach();
+
+}
+
+void serialEvent() {
+  while (Serial.available()) {
+    // get the new byte:
+    char inChar = (char)Serial.read();
+    // add it to the inputString:
+    inputString += inChar;
+    // if the incoming character is a newline, set a flag so the main loop can
+    // do something about it:
+    if (inChar == '\n') {
+      stringComplete = true;
+    }
+  }
 }

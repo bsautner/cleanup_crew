@@ -8,16 +8,20 @@ import java.io.IOException;
 public class SerialPortIO {
 
     private final SerialPortListener listener;
-    private final String tty;
+    private final String tty = "ttyACM0";
+    final Serial serial = SerialFactory.createInstance();
 
-    public SerialPortIO(String tty, SerialPortListener listener) {
+    public SerialPortIO(SerialPortListener listener) {
         this.listener = listener;
-        this.tty = tty;
+
     }
 
+    public void write(String s) throws IOException {
+        serial.write(s);
+    }
 
     public void start() {
-        final Serial serial = SerialFactory.createInstance();
+
 
 
 
@@ -44,19 +48,21 @@ public class SerialPortIO {
                     .stopBits(StopBits._1)
                     .flowControl(FlowControl.NONE);
 
-//            if(args.length > 0){
-//                config = CommandArgumentParser.getSerialConfig(config, args);
-//            }
+            try {
+                serial.open(config);
+            } catch (IOException ex) {
+                config = new SerialConfig();
 
-//            console.box(" Connecting to: " + config.toString(),
-//                    " We are sending ASCII data on the serial port every 1 second.",
-//                    " Data received on serial port will be displayed below.");
 
-            serial.open(config);
+                config.device("/dev/ttyACM1")
+                        .baud(Baud._9600)
+                        .dataBits(DataBits._8)
+                        .parity(Parity.NONE)
+                        .stopBits(StopBits._1)
+                        .flowControl(FlowControl.NONE);
+                serial.open(config);
+            }
 
-//            while(console.isRunning()) {
-//                Thread.sleep(1000);
-//            }
 
         }
         catch(IOException ex) {

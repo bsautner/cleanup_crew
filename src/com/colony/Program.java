@@ -20,12 +20,7 @@ public class Program {
     Disposable stepper1disposable;
     Disposable stepper2disposable;
 
-    public static void main(String... args) throws I2CFactory.UnsupportedBusNumberException, InterruptedException {
 
-        Program program = new Program();
-        program.go();
-
-    }
 
 
 
@@ -61,12 +56,16 @@ public class Program {
         myButton.addListener(new GpioPinListenerDigital() {
             @Override
             public void handleGpioPinDigitalStateChangeEvent(GpioPinDigitalStateChangeEvent event) {
-
+                int steps = 360;
                 System.out.printf(" --> GPIO PIN STATE CHANGE: %s=%s %b \n", event.getPin(), event.getState(), running);
+                Observable<Boolean> f1 = stepper1.walk(AdafruitMotorHAT.ServoCommand.FORWARD, steps);
+                //Observable<Boolean> b1 = stepper1.walk(AdafruitMotorHAT.ServoCommand.BACKWARD, steps);
 
+
+                Observable<Boolean> f2 = stepper2.walk(AdafruitMotorHAT.ServoCommand.BACKWARD, steps);
+                // Observable<Boolean> b2 = stepper2.walk(AdafruitMotorHAT.ServoCommand.BACKWARD, steps);
                 stepper1.stopStepper();
                 stepper2.stopStepper();
-
                 if (event.getState().isHigh()) {
 
                     if (running) {
@@ -83,14 +82,9 @@ public class Program {
                     } else {
                         System.out.println("Starting up!");
 
-                        int steps = 200;
-
-                        Observable<Boolean> f1 = stepper1.walk(AdafruitMotorHAT.ServoCommand.FORWARD, steps);
-                        Observable<Boolean> b1 = stepper1.walk(AdafruitMotorHAT.ServoCommand.BACKWARD, steps);
 
 
-                        Observable<Boolean> f2 = stepper2.walk(AdafruitMotorHAT.ServoCommand.FORWARD, steps);
-                        Observable<Boolean> b2 = stepper2.walk(AdafruitMotorHAT.ServoCommand.BACKWARD, steps);
+
 
                         BooleanSupplier booleanSupplier = new BooleanSupplier() {
                             @Override
@@ -99,15 +93,14 @@ public class Program {
                             }
                         };
 
-                        Observable.concat(f1, b1)
-                                .repeatUntil(booleanSupplier)
+
+                        stepper1disposable = f1.repeatUntil(booleanSupplier)
                                 .subscribeOn(Schedulers.io())
                                 .subscribe();
 
-//                        Observable.concat(f2, b2)
-//                                .repeatUntil(booleanSupplier)
-//                                .subscribeOn(Schedulers.io())
-//                                .subscribe();
+                        stepper2disposable = f2.repeatUntil(booleanSupplier)
+                                .subscribeOn(Schedulers.io())
+                                .subscribe();
 
 
                     }
